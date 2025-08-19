@@ -58,9 +58,17 @@ trait AutoSet
         $dbColumns = $this->getDbTableColumns();
 
         foreach ($dbColumns as $key => $column) {
+            // Bug fix for #5659 - mariadb null string instead of null type for db column
+            // https://github.com/Laravel-Backpack/CRUD/issues/5659
+            $default = $column->default();
+            $pdo_version = \DB::connection()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
+            if (is_string($default) && strtolower($default) === 'null' && stripos($pdo_version, 'mariadb')) {
+                $default = null;
+            }
+
             $column_type = $column->getType()->getName();
             $dbColumnTypes[$column->getName()]['type'] = trim(preg_replace('/\(\d+\)(.*)/i', '', $column_type));
-            $dbColumnTypes[$column->getName()]['default'] = $column->getDefault();
+            $dbColumnTypes[$column->getName()]['default'] = $default;
         }
 
         $this->autoset['db_column_types'] = $dbColumnTypes;
