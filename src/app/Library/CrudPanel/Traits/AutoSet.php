@@ -60,15 +60,18 @@ trait AutoSet
         foreach ($dbColumns as $key => $column) {
             // Bug fix for #5659 - mariadb null string instead of null type for db column
             // https://github.com/Laravel-Backpack/CRUD/issues/5659
-            $default = $column->default();
+            //
+            // Mariadb 10.2.7 and later quote literals to distinguish them from expressions
+            // https://mariadb.com/kb/en/information-schema-columns-table/
+            $defaultValue = $column->getDefault();
             $pdo_version = \DB::connection()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION);
-            if (is_string($default) && strtolower($default) === 'null' && stripos($pdo_version, 'mariadb')) {
-                $default = null;
+            if (is_string($defaultValue) && $defaultValue === 'null' && stripos($pdo_version, 'mariadb') !== false) {
+                $defaultValue = null;
             }
 
             $column_type = $column->getType()->getName();
             $dbColumnTypes[$column->getName()]['type'] = trim(preg_replace('/\(\d+\)(.*)/i', '', $column_type));
-            $dbColumnTypes[$column->getName()]['default'] = $default;
+            $dbColumnTypes[$column->getName()]['default'] = $defaultValue;
         }
 
         $this->autoset['db_column_types'] = $dbColumnTypes;
